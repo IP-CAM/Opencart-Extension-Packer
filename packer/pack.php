@@ -30,6 +30,8 @@ if(!empty($error)) {
 	
 	$pack->copyFiles($dest);
 
+	$pack->zip($dest);
+
 	$message = 'Files copied to '. $dest;
 
 	$_SESSION['oep_result'] = array(
