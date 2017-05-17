@@ -2,6 +2,9 @@
 require('log.php');
 class Package {
 	private $files;
+	private $zip_files;
+	private $ocmod;
+	private $db_file;
 	private $dir;
 	private $log;
 
@@ -13,7 +16,11 @@ class Package {
 			$fp = fopen($file, 'r');
 			while($line = fgets($fp)) {
 				$line = trim($line);
-				if(is_file($this->dir. $line)) {
+				if(!$this->ocmod && preg_match('/.*\.ocmod.xml$/', $line)) {
+					$this->ocmod = $line;
+				} else if(!$this->db_file && preg_match('/.*\.sql$/', $line)) {
+					$this->db_file = $line;
+				} else if(is_file($this->dir. $line)) {
 					$this->files[] = $line;
 				} else if(is_dir($this->dir. $line)) {
 					$this->files = array_merge($this->files, $this->listFiles($this->dir. $line));
@@ -26,6 +33,10 @@ class Package {
 
 	public function getFiles() {
 		return $this->files;
+	}
+
+	public function getZipFiles() {
+		return $this->zip_files;
 	}
 
 	public function listFiles($path) {
@@ -43,10 +54,28 @@ class Package {
 	}
 
 	public function copyFiles($dest) {
+
+		if($this->ocmod) {
+			if(!copy($this->dir . $this->ocmod, $dest . 'install.xml')) {
+				$this->log->write('The OC Mod file i('. $this->ocmod .')could not be copied');
+			} else {
+				$this->zip_files[] = $dest . 'install.xml';
+			}
+		}
+		
+		if($this->db_file) {
+			if(!copy($this->dir . $this->db_file, $dest . 'install.sql')) {
+				$this->log->write('The DB file i('. $this->db_file .')could not be copied');
+			} else {
+				$this->zip_files[] = $dest . 'install.sql';
+			}
+		}
+
 		$dest .= 'upload/';
 		if(!is_dir($dest)) {
 			mkdir($dest);
 		}
+
 		$this->log->write('Copying '. sizeof($this->getFiles()) .' files to '. $dest);
 		foreach($this->getFiles() as $file) {
 			$file_array = explode('/', $file);
@@ -58,22 +87,28 @@ class Package {
 					mkdir($dest . $path_string);
 				}
 			}
-			copy($this->dir . $file, $dest . $file);
-			$this->log->write('Copied '. $this->dir . $file .' to '. $dest . $file);
+			if(!copy($this->dir . $file, $dest . $file)) {
+				$this->log->write('The file '. $this->dir . $file .' could not be copied to '. $dest . $file);
+			} else {
+				$this->zip_files[] = $dest . $file;
+			}
 		}
 	}
 
-	public function zip($dest) {
+	public function zip($name) {
 		$zip = new ZipArchive();
-		$zip_file = preg_replace('/(.*)\/$/', '$1.ocmod.zip', $dest);
+		$zip_file = $name . '.ocmod.zip';
 		if(is_file($zip_file)) {
 			unlink($zip_file);
 		}
 		if ($zip->open($zip_file, ZipArchive::CREATE)!==TRUE) {
-			    exit("cannot open <$zip_file>\n");
+			$this->log->write('Zip file could not be created');;
 		}
-		foreach($this->getFiles() as $file) {
-			$zip->addFile($dest .'upload/'.  $file);
+		foreach($this->getZipFiles() as $file) {
+			if(!$zip->addFile($file)) {
+				$this->log->write('Could not add file '. $file .' to zip');
+			}
+	
 		}
 		$zip->close();
 	}

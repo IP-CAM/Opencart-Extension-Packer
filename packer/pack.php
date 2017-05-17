@@ -29,8 +29,8 @@ if(!empty($error)) {
 	$pack = new Package(EXTENSION_FILES, STORE_DIR);
 	
 	$pack->copyFiles($dest);
-
-	$pack->zip($dest);
+	
+	$pack->zip(substr($dest, 0, strlen($dest) - 1));
 
 	$message = 'Files copied to '. $dest;
 
