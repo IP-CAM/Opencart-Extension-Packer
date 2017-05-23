@@ -98,6 +98,7 @@ class Package {
 	public function zip($name) {
 		$zip = new ZipArchive();
 		$zip_file = $name . '.ocmod.zip';
+		$base = $this->dir . $name;
 		if(is_file($zip_file)) {
 			unlink($zip_file);
 		}
@@ -105,10 +106,9 @@ class Package {
 			$this->log->write('Zip file could not be created');;
 		}
 		foreach($this->getZipFiles() as $file) {
-			if(!$zip->addFile($file)) {
+			if(!$zip->addFile($file, str_replace($name, '', $file))) {
 				$this->log->write('Could not add file '. $file .' to zip');
 			}
-	
 		}
 		$zip->close();
 	}
